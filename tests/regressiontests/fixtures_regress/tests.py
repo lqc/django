@@ -3,7 +3,7 @@
 from __future__ import absolute_import, unicode_literals
 
 import os
-import re
+import operator
 
 from django.core.serializers.base import DeserializationError
 from django.core import management
@@ -16,6 +16,7 @@ from django.test import (TestCase, TransactionTestCase, skipIfDBFeature,
 from django.test.utils import override_settings
 from django.utils import six
 from django.utils.six import PY3, StringIO
+
 
 from .models import (Animal, Stuff, Absolute, Parent, Child, Article, Widget,
     Store, Person, Book, NKChild, RefToNKChild, Circle1, Circle2, Circle3,
@@ -328,19 +329,13 @@ class TestFixtures(TestCase):
         # Output order isn't guaranteed, so check for parts
         data = stdout.getvalue()
 
-        # Get rid of artifacts like '000000002' to eliminate the differences
-        # between different Python versions.
-        data = re.sub('0{6,}\d', '', data)
+        animals_data = sorted([
+            {"pk": 1, "model": "fixtures_regress.animal", "fields": {"count": 3, "weight": 1.2, "name": "Lion", "latin_name": "Panthera leo"}},
+            {"pk": 10, "model": "fixtures_regress.animal", "fields": {"count": 42, "weight": 1.2, "name": "Emu", "latin_name": "Dromaius novaehollandiae"}},
+            {"pk": animal.pk, "model": "fixtures_regress.animal", "fields": {"count": 2, "weight": 2.2, "name": "Platypus", "latin_name": "Ornithorhynchus anatinus"}},
+        ], key=operator.itemgetter("pk"))
 
-        lion_json = '{"pk": 1, "model": "fixtures_regress.animal", "fields": {"count": 3, "weight": 1.2, "name": "Lion", "latin_name": "Panthera leo"}}'
-        emu_json = '{"pk": 10, "model": "fixtures_regress.animal", "fields": {"count": 42, "weight": 1.2, "name": "Emu", "latin_name": "Dromaius novaehollandiae"}}'
-        platypus_json = '{"pk": %d, "model": "fixtures_regress.animal", "fields": {"count": 2, "weight": 2.2, "name": "Platypus", "latin_name": "Ornithorhynchus anatinus"}}'
-        platypus_json = platypus_json % animal.pk
-
-        self.assertEqual(len(data), len('[%s]' % ', '.join([lion_json, emu_json, platypus_json])))
-        self.assertTrue(lion_json in data)
-        self.assertTrue(emu_json in data)
-        self.assertTrue(platypus_json in data)
+        self.assertJSONEqual(data, animals_data, prepare_fn=lambda obj: sorted(obj, key=operator.itemgetter("pk")))
 
     def test_proxy_model_included(self):
         """
@@ -356,7 +351,7 @@ class TestFixtures(TestCase):
             format='json',
             stdout=stdout
         )
-        self.assertEqual(
+        self.assertJSONEqual(
             stdout.getvalue(),
             """[{"pk": %d, "model": "fixtures_regress.widget", "fields": {"name": "grommet"}}]"""
             % widget.pk
@@ -517,7 +512,7 @@ class NaturalKeyFixtureTests(TestCase):
             use_natural_keys=True,
             stdout=stdout,
         )
-        self.assertEqual(
+        self.assertJSONEqual(
             stdout.getvalue(),
             """[{"pk": 2, "model": "fixtures_regress.store", "fields": {"main": null, "name": "Amazon"}}, {"pk": 3, "model": "fixtures_regress.store", "fields": {"main": null, "name": "Borders"}}, {"pk": 4, "model": "fixtures_regress.person", "fields": {"name": "Neal Stephenson"}}, {"pk": 1, "model": "fixtures_regress.book", "fields": {"stores": [["Amazon"], ["Borders"]], "name": "Cryptonomicon", "author": ["Neal Stephenson"]}}]"""
         )
