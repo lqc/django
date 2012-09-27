@@ -405,6 +405,20 @@ class SimpleTestCase(ut2.TestCase):
                 self.fail("Second argument is not valid JSON: %r" % expected_data)
         self.assertEqual(prepare_fn(data), expected_data, msg=msg)
 
+    def assertInHTML(self, needle, haystack, count = None, msg_prefix=''):
+        needle = assert_and_parse_html(self, needle, None,
+            'First argument is not valid HTML:')
+        haystack = assert_and_parse_html(self, haystack, None,
+            'Second argument is not valid HTML:')
+        real_count = haystack.count(needle)
+        if count is not None:
+            self.assertEqual(real_count, count,
+                msg_prefix + "Found %d instances of '%s' in response"
+                " (expected %d)" % (real_count, needle, count))
+        else:
+            self.assertTrue(real_count != 0,
+                msg_prefix + "Couldn't find '%s' in response" % needle)
+
     def assertQueryStringEqual(self, raw, expected_data, msg=None):
         try:
             data = sorted(parse_qsl(raw), key=operator.itemgetter(0))
