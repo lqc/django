@@ -12,13 +12,13 @@ from django.http import (QueryDict, HttpResponse, HttpResponseRedirect,
                          HttpResponseNotModified, StreamingHttpResponse,
                          SimpleCookie, BadHeaderError,
                          parse_cookie)
-from django.test import TestCase
+from django.test import TestCase, SimpleTestCase
 from django.utils.encoding import smart_str
 from django.utils import six
 from django.utils import unittest
 
 
-class QueryDictTests(unittest.TestCase):
+class QueryDictTests(SimpleTestCase):
     def test_missing_key(self):
         q = QueryDict(str(''))
         self.assertRaises(KeyError, q.__getitem__, 'foo')
@@ -149,7 +149,7 @@ class QueryDictTests(unittest.TestCase):
         self.assertEqual(q.setdefault('foo', 'bar'), 'bar')
         self.assertEqual(q['foo'], 'bar')
         self.assertEqual(q.getlist('foo'), ['bar'])
-        self.assertIn(q.urlencode(), ['foo=bar&name=john', 'name=john&foo=bar'])
+        self.assertQueryStringEqual(q.urlencode(), 'foo=bar&name=john')
 
         q.clear()
         self.assertEqual(len(q), 0)

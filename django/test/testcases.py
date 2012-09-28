@@ -405,7 +405,7 @@ class SimpleTestCase(ut2.TestCase):
                 self.fail("Second argument is not valid JSON: %r" % expected_data)
         self.assertEqual(prepare_fn(data), expected_data, msg=msg)
 
-    def assertInHTML(self, needle, haystack, count = None, msg_prefix=''):
+    def assertInHTML(self, needle, haystack, msg_prefix='', count=None):
         needle = assert_and_parse_html(self, needle, None,
             'First argument is not valid HTML:')
         haystack = assert_and_parse_html(self, haystack, None,
