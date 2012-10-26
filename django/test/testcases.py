@@ -1,16 +1,18 @@
 from __future__ import unicode_literals
 
+import collections
 import difflib
 import json
 import os
+import operator
 import re
 import sys
 from copy import copy
 from functools import wraps
 try:
-    from urllib.parse import urlsplit, urlunsplit
+    from urllib.parse import urlsplit, urlunsplit, parse_qsl
 except ImportError:     # Python 2
-    from urlparse import urlsplit, urlunsplit
+    from urlparse import urlsplit, urlunsplit, parse_qsl
 import select
 import socket
 import threading
@@ -402,6 +404,22 @@ class SimpleTestCase(ut2.TestCase):
             except ValueError:
                 self.fail("Second argument is not valid JSON: %r" % expected_data)
         self.assertEqual(prepare_fn(data), expected_data, msg=msg)
+
+    def assertQueryStringEqual(self, raw, expected_data, msg=None):
+        try:
+            data = sorted(parse_qsl(raw), key=operator.itemgetter(0))
+        except ValueError:
+            self.fail("First argument is not a valid query string: %r" % raw)
+        if isinstance(expected_data, six.string_types):
+            try:
+                expected_data = sorted(parse_qsl(expected_data), key=operator.itemgetter(0))
+            except ValueError:
+                self.fail("Second argument is not valid query string: %r" % expected_data)
+        elif isinstance(expected_data, collections.Mapping):
+            expected_data = sorted([(k, str(v)) for k, v in expected_data.items()], key=operator.itemgetter(0))
+        elif isinstance(expected_data, collections.Iterable):
+            expected_data = sorted([(k, str(v)) for k, v in expected_data], key=operator.itemgetter(0))
+        self.assertEqual(data, expected_data, msg=msg)
 
 
 class TransactionTestCase(SimpleTestCase):

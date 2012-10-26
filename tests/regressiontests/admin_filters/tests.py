@@ -151,8 +151,8 @@ class ListFiltersTests(TestCase):
         request = self.request_factory.get('/')
         changelist = self.get_changelist(request, Book, modeladmin)
 
-        request = self.request_factory.get('/', {'date_registered__gte': self.today,
-                                                 'date_registered__lt': self.tomorrow})
+        query_params = {'date_registered__gte': self.today, 'date_registered__lt': self.tomorrow}
+        request = self.request_factory.get('/', query_params)
         changelist = self.get_changelist(request, Book, modeladmin)
 
         # Make sure the correct queryset is returned
@@ -164,12 +164,12 @@ class ListFiltersTests(TestCase):
         self.assertEqual(force_text(filterspec.title), 'date registered')
         choice = select_by(filterspec.choices(changelist), "display", "Today")
         self.assertEqual(choice['selected'], True)
-        self.assertEqual(choice['query_string'], '?date_registered__gte=%s'
-                                                 '&date_registered__lt=%s'
-                                                % (self.today, self.tomorrow))
+        self.assertTrue(choice['query_string'].startswith("?"))
+        self.assertQueryStringEqual(choice['query_string'][1:], query_params)
 
-        request = self.request_factory.get('/', {'date_registered__gte': self.today.replace(day=1),
-                                                 'date_registered__lt': self.tomorrow})
+        query_params = {'date_registered__gte': self.today.replace(day=1),
+                        'date_registered__lt': self.tomorrow}
+        request = self.request_factory.get('/', query_params)
         changelist = self.get_changelist(request, Book, modeladmin)
 
         # Make sure the correct queryset is returned
@@ -185,12 +185,12 @@ class ListFiltersTests(TestCase):
         self.assertEqual(force_text(filterspec.title), 'date registered')
         choice = select_by(filterspec.choices(changelist), "display", "This month")
         self.assertEqual(choice['selected'], True)
-        self.assertEqual(choice['query_string'], '?date_registered__gte=%s'
-                                                 '&date_registered__lt=%s'
-                                                % (self.today.replace(day=1), self.tomorrow))
+        self.assertTrue(choice['query_string'].startswith("?"))
+        self.assertQueryStringEqual(choice['query_string'][1:], query_params)
 
-        request = self.request_factory.get('/', {'date_registered__gte': self.today.replace(month=1, day=1),
-                                                 'date_registered__lt': self.tomorrow})
+        query_params = {'date_registered__gte': self.today.replace(month=1, day=1),
+                        'date_registered__lt': self.tomorrow}
+        request = self.request_factory.get('/', query_params)
         changelist = self.get_changelist(request, Book, modeladmin)
 
         # Make sure the correct queryset is returned
@@ -206,12 +206,12 @@ class ListFiltersTests(TestCase):
         self.assertEqual(force_text(filterspec.title), 'date registered')
         choice = select_by(filterspec.choices(changelist), "display", "This year")
         self.assertEqual(choice['selected'], True)
-        self.assertEqual(choice['query_string'], '?date_registered__gte=%s'
-                                                 '&date_registered__lt=%s'
-                                                % (self.today.replace(month=1, day=1), self.tomorrow))
+        self.assertTrue(choice['query_string'].startswith("?"))
+        self.assertQueryStringEqual(choice['query_string'][1:], query_params)
 
-        request = self.request_factory.get('/', {'date_registered__gte': str(self.one_week_ago),
-                                                 'date_registered__lt': str(self.tomorrow)})
+        query_params = {'date_registered__gte': str(self.one_week_ago),
+                        'date_registered__lt': str(self.tomorrow)}
+        request = self.request_factory.get('/', query_params)
         changelist = self.get_changelist(request, Book, modeladmin)
 
         # Make sure the correct queryset is returned
@@ -223,9 +223,8 @@ class ListFiltersTests(TestCase):
         self.assertEqual(force_text(filterspec.title), 'date registered')
         choice = select_by(filterspec.choices(changelist), "display", "Past 7 days")
         self.assertEqual(choice['selected'], True)
-        self.assertEqual(choice['query_string'], '?date_registered__gte=%s'
-                                                 '&date_registered__lt=%s'
-                                                % (str(self.one_week_ago), str(self.tomorrow)))
+        self.assertTrue(choice['query_string'].startswith("?"))
+        self.assertQueryStringEqual(choice['query_string'][1:], query_params)
 
     @override_settings(USE_TZ=True)
     def test_datefieldlistfilter_with_time_zone_support(self):
