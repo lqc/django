@@ -5,9 +5,9 @@ import os
 import re
 import datetime
 try:
-    from urllib.parse import urljoin
+    from urllib.parse import urljoin, urlsplit
 except ImportError:     # Python 2
-    from urlparse import urljoin
+    from urlparse import urljoin, urlsplit
 
 from django.conf import settings, global_settings
 from django.core import mail
@@ -28,9 +28,10 @@ from django.contrib.contenttypes.models import ContentType
 from django.forms.util import ErrorList
 from django.template.response import TemplateResponse
 from django.test import TestCase
+from django.test.html import find_html_links
 from django.utils import formats, translation, unittest
 from django.utils.cache import get_max_age
-from django.utils.encoding import iri_to_uri, force_bytes
+from django.utils.encoding import iri_to_uri, force_bytes, force_text
 from django.utils.html import escape
 from django.utils.http import urlencode
 from django.utils import six
@@ -3486,6 +3487,12 @@ class DateHierarchyTests(TestCase):
         settings.USE_L10N = self.old_USE_L10N
         formats.reset_format_cache()
 
+    def assert_contains_link(self, response, link):
+        if not hasattr(response, "_links_found"):
+            response_text = force_text(response.content, response._charset)
+            response._links_found = find_html_links(response_text)
+        self.assertIn(link, response._links_found, "Link %r not found." % link)
+
     def assert_non_localized_year(self, response, year):
         """Ensure that the year is not localized with
         USE_THOUSAND_SEPARATOR. Refs #15234.
@@ -3493,18 +3500,22 @@ class DateHierarchyTests(TestCase):
         self.assertNotContains(response, formats.number_format(year))
 
     def assert_contains_year_link(self, response, date):
-        self.assertContains(response, '?release_date__year=%d"' % (date.year,))
+        self.assert_contains_link(response,
+             '?release_date__year={0.year}'
+             ''.format(date))
 
     def assert_contains_month_link(self, response, date):
-        self.assertContains(
-            response, '?release_date__year=%d&amp;release_date__month=%d"' % (
-                date.year, date.month))
+        self.assert_contains_link(response,
+             '?release_date__month={0.month}'
+             '&release_date__year={0.year}'
+             ''.format(date))
 
     def assert_contains_day_link(self, response, date):
-        self.assertContains(
-            response, '?release_date__year=%d&amp;'
-            'release_date__month=%d&amp;release_date__day=%d"' % (
-                date.year, date.month, date.day))
+        self.assert_contains_link(response,
+             '?release_date__day={0.day}'
+             '&release_date__month={0.month}'
+             '&release_date__year={0.year}'
+             ''.format(date))
 
     def test_empty(self):
         """

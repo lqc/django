@@ -4,11 +4,17 @@ Comparing two html documents.
 
 from __future__ import unicode_literals
 
+try:
+    from urllib.parse import urlsplit, urlencode, urlunsplit, parse_qsl
+except ImportError:     # Python 2
+    from urlparse import urlsplit, urlunsplit, parse_qsl
+    from urllib import urlencode
+
+import operator
 import re
-from django.utils.encoding import force_text
 from django.utils.html_parser import HTMLParser, HTMLParseError
 from django.utils import six
-from django.utils.encoding import python_2_unicode_compatible
+from django.utils.encoding import python_2_unicode_compatible, force_text
 
 
 WHITESPACE = re.compile('\s+')
@@ -209,13 +215,31 @@ class Parser(HTMLParser):
         self.current.append('&%s;' % name)
 
 
+class LinkFinder(HTMLParser):
+
+    def __init__(self):
+        HTMLParser.__init__(self)
+        self.links_found = []
+
+    def handle_starttag(self, tag, attrs):
+        if tag != "a":
+            return
+        for name, value in attrs:
+            if name != "href":
+                continue
+            scheme, netloc, path, query, frag = urlsplit(value)
+            # normalize the URL by sorting query arguments
+            query = urlencode(sorted(parse_qsl(query), key=operator.itemgetter(0)))
+            value = urlunsplit((scheme, netloc, path, query, frag))
+            self.links_found.append(value)
+
+
 def parse_html(html):
     """
     Takes a string that contains *valid* HTML and turns it into a Python object
     structure that can be easily compared against other HTML on semantic
     equivilance. Syntactical differences like which quotation is used on
     arguments will be ignored.
-
     """
     parser = Parser()
     parser.feed(html)
@@ -227,3 +251,14 @@ def parse_html(html):
         if not isinstance(document.children[0], six.string_types):
             document = document.children[0]
     return document
+
+
+def find_html_links(html):
+    """
+    Takes a string that contains valid HTML and returns a list of all
+    hyperlinks in normalized form and with sorted query string parameters.
+    """
+    parser = LinkFinder()
+    parser.feed(html)
+    parser.close()
+    return parser.links_found
